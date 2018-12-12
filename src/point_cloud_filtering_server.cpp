@@ -21,6 +21,8 @@
 #include <pcl/features/normal_3d.h>
 #include <pcl/kdtree/kdtree.h>
 #include <pcl/segmentation/extract_clusters.h>
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl/ros/conversions.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/point_cloud2_iterator.h>
 #include "typedefs.h"
@@ -66,12 +68,13 @@ class ROSController {
 	
 
 	PointType p;
-	for (int i = 0; i < req.width; i+=3) {
-		p.x = static_cast<float>(req.data[i]);
-		p.y = static_cast<float>(req.data[i+1]);
-		p.z = static_cast<float>(req.data[i+2]);
-		filtered_cloud->push_back(p);
-	}
+//	for (int i = 0; i < req.width; i+=3) {
+//		p.x = static_cast<float>(req.data[i]);
+//		p.y = static_cast<float>(req.data[i+1]);
+//		p.z = static_cast<float>(req.data[i+2]);
+//		filtered_cloud->push_back(p);
+//	}
+  pcl::fromROSMsg(req, *filtered_cloud);
 	std::cout << "Loaded pointcloud with " << filtered_cloud->size() << " points." << std::endl;
 
 	pcl::PassThrough<PointType> pass;
@@ -229,8 +232,8 @@ class ROSController {
 //		res.indices.push_back(cluster_indices[0].indices[i]);
 //	}
 
-	return true;
-
+  this->pub.publish(res);
+  
 }
   
 };
@@ -239,7 +242,7 @@ ROSController::ROSController(ros::NodeHandle n) {
   this->n = n;
   this->service = n.advertiseService("filter_pointcloud", &ROSController::trigger_filter, this);
 //  pub = rospy.Publisher('cloud_indexed', CloudIndexed, queue_size=1, latch=True) 
-  this->pub = n.advertise<gpd::CloudIndexed>("cloud_indexed", 10); 
+  this->pub = n.advertise<gpd::CloudIndexed>("/summit_xl/cloud_indexed", 10, true); 
   
 }
 

@@ -58,6 +58,8 @@
   <exec_depend>rospy</exec_depend>
   <depend>gpd</depend>
   <depend>std_srvs</depend>
+  <depend>pcl</depend>
+  <depend>pcl_conversions</depend>
 
 
   <!-- The export tag contains other, unspecified, tags -->
