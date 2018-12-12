@@ -1,11 +1,40 @@
 #include "ros/ros.h"
 #include "std_srvs/Trigger.h"
 #include "sensor_msgs/PointCloud2.h"
+#include "gpd/CloudIndexed.h"
+#include <iostream>
+#include <vector>
+#include <numeric>
+#include <algorithm>
+#include <iterator>
+//#include "gpd/filter_pointcloud.h"
+#include <pcl/ModelCoefficients.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl/point_types.h>
+#include <pcl/sample_consensus/method_types.h>
+#include <pcl/sample_consensus/model_types.h>
+#include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/filters/passthrough.h>
+#include <pcl/filters/extract_indices.h>
+#include <pcl/filters/voxel_grid.h>
+#include <pcl/filters/statistical_outlier_removal.h>
+#include <pcl/features/normal_3d.h>
+#include <pcl/kdtree/kdtree.h>
+#include <pcl/segmentation/extract_clusters.h>
+#include <sensor_msgs/PointCloud2.h>
+#include <sensor_msgs/point_cloud2_iterator.h>
+#include "typedefs.h"
+//using namespace sensor_msgs;
+
+
+
+char* camera_depth_optical_frame = "arm_camera_depth_optical_frame";
 
 class ROSController {
   protected:
     ros::NodeHandle n;
     ros::Subscriber sub;
+    ros::Publisher pub;
     ros::ServiceServer service;
   public:
   
@@ -23,25 +52,18 @@ class ROSController {
   void filter_pointcloud(const sensor_msgs::PointCloud2::ConstPtr& msg)
   {
     ROS_INFO("Point cloud message received" );
-    filtering(msg->data)
-    
+    this->filtering(*msg); 
+    delete this->sub;
   }
 
   ROSController(ros::NodeHandle n);
   
-};
-
-ROSController::ROSController(ros::NodeHandle n) {
-  this->n = n;
-  this->service = n.advertiseService("filter_pointcloud", &ROSController::trigger_filter, this);  
-}
-
-
-bool filtering(sensor_msgs::PointCloud2::ConstPtr& msg, //PointCloud2 msg
-			   std_msgs::Empty::Request &res) //CloudIndexed msg
+  bool filtering(sensor_msgs::PointCloud2 req) //, //PointCloud2 msg
+//			   std_msgs::Empty::Request &res) //CloudIndexed msg
 {
 	CloudType::Ptr filtered_cloud	(new CloudType);
 	CloudType::Ptr plane_cloud		(new CloudType);
+	
 
 	PointType p;
 	for (int i = 0; i < req.width; i+=3) {
@@ -53,14 +75,14 @@ bool filtering(sensor_msgs::PointCloud2::ConstPtr& msg, //PointCloud2 msg
 	std::cout << "Loaded pointcloud with " << filtered_cloud->size() << " points." << std::endl;
 
 	pcl::PassThrough<PointType> pass;
-	pass.setInputCLoud(filtered_cloud);
+	pass.setInputCloud(filtered_cloud);
 	pass.setFilterFieldName("z");
 	pass.setFilterLimits(0.0, 1.0);
 	pass.filter(*filtered_cloud);
 	std::cout << "Pointcloud after max range filtering has " << filtered_cloud->size()
 			  << " points." << std::endl;
 
-	pcl::VoxelGrid<CloudType> sor;
+	pcl::VoxelGrid<PointType> sor;
 	sor.setInputCloud(filtered_cloud);
 	sor.setLeafSize(0.005f, 0.005f, 0.005f);
 	sor.filter(*filtered_cloud);
@@ -70,10 +92,10 @@ bool filtering(sensor_msgs::PointCloud2::ConstPtr& msg, //PointCloud2 msg
 	pcl::StatisticalOutlierRemoval<PointType> stat_fil;
 	stat_fil.setInputCloud(filtered_cloud);
 	stat_fil.setMeanK(50);
-	stat_fil.StddevMulThresh(1.0);
+	stat_fil.setStddevMulThresh(1.0);
 	stat_fil.filter(*filtered_cloud);
 	std::cout << "Pointcloud after outlier filtering has " << filtered_cloud->size()
-			  << " points." << std:endl;
+			  << " points." << std::endl;
 
 	//Followed this tutorial http://www.pointclouds.org/documentation/tutorials/cluster_extraction.php
 	pcl::ModelCoefficients::Ptr coeffs(new pcl::ModelCoefficients);
@@ -187,7 +209,6 @@ bool filtering(sensor_msgs::PointCloud2::ConstPtr& msg, //PointCloud2 msg
 	// 		*out_z = it->indices[i].z;	++out_z;
 	// 	}
 	// }
-	PointType p;
 	for (int i = 0; i < cluster_indices[0].indices.size(); ++i) {
 		p = filtered_cloud->points[cluster_indices[0].indices[i]];
 		*out_x = p.x; ++out_x;
@@ -201,15 +222,29 @@ bool filtering(sensor_msgs::PointCloud2::ConstPtr& msg, //PointCloud2 msg
 	// 	indices_acc.insert(indices_acc.end(), cluster_indices[i].indices.begin(), cluster_indices[i].indices.end());
 	// }
 
+  gpd::CloudIndexed res = *(new gpd::CloudIndexed);
 	res.cloud_sources.cloud = res_cloud;
-	res.indices = indices_acc;
-	for (int i = 0; i < cluster_indices[0].indices.size(); ++i) {
-		res.indices.push_back(cluster_indices[0].indices[i]);
-	}
+//	res.indices = indices_acc;
+//	for (int i = 0; i < cluster_indices[0].indices.size(); ++i) {
+//		res.indices.push_back(cluster_indices[0].indices[i]);
+//	}
 
 	return true;
 
 }
+  
+};
+
+ROSController::ROSController(ros::NodeHandle n) {
+  this->n = n;
+  this->service = n.advertiseService("filter_pointcloud", &ROSController::trigger_filter, this);
+//  pub = rospy.Publisher('cloud_indexed', CloudIndexed, queue_size=1, latch=True) 
+  this->pub = n.advertise<gpd::CloudIndexed>("cloud_indexed", 10); 
+  
+}
+
+
+
 
 int main(int argc, char **argv)
 {

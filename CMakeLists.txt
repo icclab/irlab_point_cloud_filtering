@@ -10,7 +10,9 @@ project(irlab_point_cloud_filtering)
 find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
+  std_srvs
   std_msgs
+  gpd
   message_generation
 )
 
@@ -65,12 +67,15 @@ add_service_files(
 #   FILES
 #   Action1.action
 #   Action2.action
-# )
+# )10
 
 ## Generate added messages and services with any dependencies listed here
 generate_messages(
   DEPENDENCIES
-  std_msgs  # Or other packages containing msgs
+  std_srvs
+  std_msgs
+  sensor_msgs
+  gpd  # Or other packages containing msgs
 )
 
 ################################################
@@ -135,7 +140,7 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 # add_executable(${PROJECT_NAME}_node src/irlab_point_cloud_filtering_node.cpp)
 add_executable(point_cloud_filtering_server src/point_cloud_filtering_server.cpp)
-target_link_libraries(point_filtering_server ${catkin_LIBRARIES})
+target_link_libraries(point_cloud_filtering_server ${catkin_LIBRARIES})
 ##add_dependencies(point_cloud_filtering_server irlab_point_cloud_filtering_gencpp)
 
 ## Rename C++ executable without prefix
