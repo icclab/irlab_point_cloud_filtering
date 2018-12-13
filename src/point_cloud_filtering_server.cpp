@@ -242,11 +242,9 @@ ROSController::ROSController(ros::NodeHandle n) {
   this->n = n;
   this->service = n.advertiseService("filter_pointcloud", &ROSController::trigger_filter, this);
 //  pub = rospy.Publisher('cloud_indexed', CloudIndexed, queue_size=1, latch=True) 
-  this->pub = n.advertise<gpd::CloudIndexed>("/summit_xl/cloud_indexed", 10, true); 
+  this->pub = n.advertise<gpd::CloudIndexed>("/cloud_indexed", 10, true); 
   
 }
-
-
 
 
 int main(int argc, char **argv)
