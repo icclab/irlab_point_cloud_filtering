@@ -225,11 +225,17 @@ class ROSController {
 	// }
 
   gpd::CloudIndexed res = *(new gpd::CloudIndexed);
-	res.cloud_sources.cloud = res_cloud;	
+	res.cloud_sources.cloud = res_cloud;
+	std_msgs::Int64 val = *(new std_msgs::Int64);
+	val.data = 0;
+	std::vector<geometry_msgs::Point> vec = *(new std::vector<geometry_msgs::Point>);
+	vec.push_back(*(new geometry_msgs::Point));
+	res.cloud_sources.view_points = vec;
 	for (int i = 0; i < cluster_indices[0].indices.size(); ++i) {
 	  std_msgs::Int64 index = *(new std_msgs::Int64);
 	  index.data = cluster_indices[0].indices[i];
 		res.indices.push_back(index);
+		res.cloud_sources.camera_source.push_back(val);
 	}
 
   ROS_INFO("Publishing indexed pointCloud"); 
