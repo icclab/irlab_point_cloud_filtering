@@ -39,6 +39,7 @@ class ROSController {
     ros::Publisher pub;
     ros::Publisher pub_pc;
     ros::ServiceServer service;
+    int tries = 0;
   public:
   
   bool trigger_filter(std_srvs::Trigger::Request  &req,
@@ -55,8 +56,10 @@ class ROSController {
   void filter_pointcloud(const sensor_msgs::PointCloud2::ConstPtr& msg)
   {
     ROS_INFO("Point cloud message received" );
-    this->filtering(*msg); 
-    this->sub.shutdown();
+    tries++;
+    if ( this->filtering(*msg) || tries > 3){
+      this->sub.shutdown();      
+    }
   }
 
   ROSController(ros::NodeHandle n);
@@ -142,7 +145,7 @@ class ROSController {
 	std::vector<pcl::PointIndices> cluster_indices;
 	pcl::EuclideanClusterExtraction<PointType> ec;
 	ec.setClusterTolerance(0.02);
-	ec.setMinClusterSize(100);
+	ec.setMinClusterSize(50);
 	ec.setMaxClusterSize(2500);
 	ec.setSearchMethod(tree);
 	ec.setInputCloud(filtered_cloud);
@@ -190,6 +193,11 @@ class ROSController {
 	res_cloud.header.stamp = ros::Time::now();
 	res_cloud.height = 1;
 	//Can we just send the entire pointcloud including multiple objects??
+	ROS_INFO("cluster_indices size: %d", cluster_indices.size());
+	if (cluster_indices.size() == 0){
+	  ROS_ERROR("Cannot find objects after clustering");
+	  return false;
+	}	
 	res_cloud.width = cluster_indices[0].indices.size();
 	res_cloud.is_bigendian = false;
 	res_cloud.is_dense = true;
@@ -224,15 +232,15 @@ class ROSController {
 	// 	indices_acc.insert(indices_acc.end(), cluster_indices[i].indices.begin(), cluster_indices[i].indices.end());
 	// }
 
-  gpd::CloudIndexed res = *(new gpd::CloudIndexed);
+  gpd::CloudIndexed res;
 	res.cloud_sources.cloud = res_cloud;
-	std_msgs::Int64 val = *(new std_msgs::Int64);
+	std_msgs::Int64 val;
 	val.data = 0;
-	std::vector<geometry_msgs::Point> vec = *(new std::vector<geometry_msgs::Point>);
-	vec.push_back(*(new geometry_msgs::Point));
+	std::vector<geometry_msgs::Point> vec;
+	vec.push_back(geometry_msgs::Point());
 	res.cloud_sources.view_points = vec;
 	for (int i = 0; i < cluster_indices[0].indices.size(); ++i) {
-	  std_msgs::Int64 index = *(new std_msgs::Int64);
+	  std_msgs::Int64 index;
 	  index.data = cluster_indices[0].indices[i];
 		res.indices.push_back(index);
 		res.cloud_sources.camera_source.push_back(val);
@@ -242,6 +250,7 @@ class ROSController {
   this->pub.publish(res);
   this->pub_pc.publish(res.cloud_sources.cloud);
   ROS_INFO("Published indexed pointCloud");
+  return true;
 }
   
 };
