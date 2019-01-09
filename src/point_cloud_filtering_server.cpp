@@ -28,10 +28,6 @@
 #include "typedefs.h"
 //using namespace sensor_msgs;
 
-
-
-char* camera_depth_optical_frame = "arm_camera_depth_optical_frame";
-
 class ROSController {
   protected:
     ros::NodeHandle n;
@@ -39,6 +35,7 @@ class ROSController {
     ros::Publisher pub;
     ros::Publisher pub_pc;
     ros::ServiceServer service;
+    char* pointcloud_topic;
     int tries = 0;
   public:
   
@@ -46,7 +43,7 @@ class ROSController {
            std_srvs::Trigger::Response &res)
   {
     ROS_INFO("Received point cloud filtering request");
-    this->sub = this->n.subscribe("/summit_xl/arm_camera/depth/points", 1000, &ROSController::filter_pointcloud, this);
+    this->sub = this->n.subscribe(this->pointcloud_topic, 1000, &ROSController::filter_pointcloud, this);
     res.success = true;
     res.message = "Service triggered";
     ROS_INFO("sending back response: OK");
@@ -62,7 +59,7 @@ class ROSController {
     }
   }
 
-  ROSController(ros::NodeHandle n);
+  ROSController(ros::NodeHandle n, char* pointcloud_topic);
   
   bool filtering(sensor_msgs::PointCloud2 req) //, //PointCloud2 msg
 //			   std_msgs::Empty::Request &res) //CloudIndexed msg
@@ -189,11 +186,11 @@ class ROSController {
 	//				 				0, [](int a, pcl::PointIndices b) {return a + (int)b.indices.size();})
 
 	sensor_msgs::PointCloud2 res_cloud;
-	res_cloud.header.frame_id = camera_depth_optical_frame;
+	res_cloud.header.frame_id = req.header.frame_id;
 	res_cloud.header.stamp = ros::Time::now();
 	res_cloud.height = 1;
 	//Can we just send the entire pointcloud including multiple objects??
-	ROS_INFO("cluster_indices size: %d", cluster_indices.size());
+	ROS_INFO("cluster_indices size: %lu", cluster_indices.size());
 	if (cluster_indices.size() == 0){
 	  ROS_ERROR("Cannot find objects after clustering");
 	  return false;
@@ -255,24 +252,31 @@ class ROSController {
   
 };
 
-ROSController::ROSController(ros::NodeHandle n) {
+ROSController::ROSController(ros::NodeHandle n, char* pointcloud_topic) {
   this->n = n;
   this->service = n.advertiseService("filter_pointcloud", &ROSController::trigger_filter, this);
 //  pub = rospy.Publisher('cloud_indexed', CloudIndexed, queue_size=1, latch=True) 
   this->pub = n.advertise<gpd::CloudIndexed>("/cloud_indexed", 10, true); 
   this->pub_pc = n.advertise<sensor_msgs::PointCloud2>("/cloud_indexed_pc_only", 10, true);
+  this->pointcloud_topic = pointcloud_topic;
 }
 
 
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "point_cloud_filtering_server");
+  char* pointcloud_topic = "/summit_xl/arm_camera/depth_registered/points";
+  if (argc == 2)
+  {
+    pointcloud_topic = argv[1];
+  }
+  ROS_INFO("Will register to pointcloud2 topic: %s", pointcloud_topic);
   ros::NodeHandle n;
 //  ros::ServiceServer service = n.advertiseService("filter_pointcloud", trigger_filter);
 //  ros::Subscriber sub = n.subscribe("/camera/depth_registered/points", 1000, filter_pointcloud);
 
 //  ros::spin();
-  ROSController* c = new ROSController(n);
+  ROSController* c = new ROSController(n, pointcloud_topic);
   ROS_INFO("Ready to filter point clouds.");
   ros::spin();
   return 0;
