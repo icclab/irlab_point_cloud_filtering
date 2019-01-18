@@ -35,8 +35,11 @@ class ROSController {
     ros::Publisher pub;
     ros::Publisher pub_pc;
     ros::ServiceServer service;
+    sensor_msgs::PointCloud2 raw_cloud;
+    sensor_msgs::PointCloud2 raw_cloud_temp;
     char* pointcloud_topic;
     int tries = 0;
+    int max_messages = 0;
   public:
   
   bool trigger_filter(std_srvs::Trigger::Request  &req,
@@ -53,10 +56,36 @@ class ROSController {
   void filter_pointcloud(const sensor_msgs::PointCloud2::ConstPtr& msg)
   {
     ROS_INFO("Point cloud message received" );
-    tries++;
-    if ( this->filtering(*msg) || tries > 3){
-      this->sub.shutdown();      
+    if (max_messages<10)
+    {
+        raw_cloud_temp = *msg;
+        if (max_messages>1)
+        {
+            bool result;
+            result = pcl::concatenatePointCloud(raw_cloud, raw_cloud_temp, raw_cloud);
+            if (result)
+            {
+                max_messages++;
+            }
+            else
+            {
+                ROS_INFO("Pointcloud dropped as concatenation failed");
+            }
+        }
+        else
+        {
+            max_messages++;
+            raw_cloud=raw_cloud_temp;
+        }
     }
+    else
+    {
+        tries++;
+        if ( this->filtering(raw_cloud) || tries > 3){
+           this->sub.shutdown();
+        }
+    }
+
   }
 
   ROSController(ros::NodeHandle n, char* pointcloud_topic);
@@ -64,6 +93,8 @@ class ROSController {
   bool filtering(sensor_msgs::PointCloud2 req) //, //PointCloud2 msg
 //			   std_msgs::Empty::Request &res) //CloudIndexed msg
 {
+
+    ROS_INFO("The number of pointcloud messages received is: %d ", max_messages);
 	CloudType::Ptr filtered_cloud	(new CloudType);
 	CloudType::Ptr plane_cloud		(new CloudType);
 	
@@ -87,7 +118,7 @@ class ROSController {
 
 	pcl::VoxelGrid<PointType> sor;
 	sor.setInputCloud(filtered_cloud);
-	sor.setLeafSize(0.005f, 0.005f, 0.005f);
+	sor.setLeafSize(0.0005f, 0.0005f, 0.0005f);
 	sor.filter(*filtered_cloud);
 	ROS_INFO("Downsampled pointcloud has %lu points.", filtered_cloud->size());
 
@@ -108,6 +139,8 @@ class ROSController {
 	seg.setMethodType(pcl::SAC_RANSAC);
 	seg.setDistanceThreshold(0.01);
 	seg.setMaxIterations(100);
+
+
 	
 	int i = 0, nr_points = (int) filtered_cloud->size();
 //	while (filtered_cloud->size() > 0.3 * nr_points)
@@ -143,7 +176,7 @@ class ROSController {
 	pcl::EuclideanClusterExtraction<PointType> ec;
 	ec.setClusterTolerance(0.02);
 	ec.setMinClusterSize(50);
-	ec.setMaxClusterSize(2500);
+	ec.setMaxClusterSize(20000);
 	ec.setSearchMethod(tree);
 	ec.setInputCloud(filtered_cloud);
 	ec.extract(cluster_indices);
