@@ -39,7 +39,8 @@ class ROSController {
     sensor_msgs::PointCloud2 raw_cloud_temp;
     char* pointcloud_topic;
     int tries = 0;
-    int max_messages = 0;
+    int messages = 0;
+    int max_messages = 5;
   public:
   
   bool trigger_filter(std_srvs::Trigger::Request  &req,
@@ -56,16 +57,16 @@ class ROSController {
   void filter_pointcloud(const sensor_msgs::PointCloud2::ConstPtr& msg)
   {
     ROS_INFO("Point cloud message received" );
-    if (max_messages<10)
+    if (messages<max_messages)
     {
         raw_cloud_temp = *msg;
-        if (max_messages>1)
+        if (messages>1)
         {
             bool result;
             result = pcl::concatenatePointCloud(raw_cloud, raw_cloud_temp, raw_cloud);
             if (result)
             {
-                max_messages++;
+                messages++;
             }
             else
             {
@@ -74,7 +75,7 @@ class ROSController {
         }
         else
         {
-            max_messages++;
+            messages++;
             raw_cloud=raw_cloud_temp;
         }
     }
@@ -94,7 +95,7 @@ class ROSController {
 //			   std_msgs::Empty::Request &res) //CloudIndexed msg
 {
 
-    ROS_INFO("The number of pointcloud messages received is: %d ", max_messages);
+    ROS_INFO("The number of pointcloud messages received is: %d ", messages);
 	CloudType::Ptr filtered_cloud	(new CloudType);
 	CloudType::Ptr plane_cloud		(new CloudType);
 	
@@ -118,7 +119,7 @@ class ROSController {
 
 	pcl::VoxelGrid<PointType> sor;
 	sor.setInputCloud(filtered_cloud);
-	sor.setLeafSize(0.0005f, 0.0005f, 0.0005f);
+	sor.setLeafSize(0.001f, 0.001f, 0.001f);
 	sor.filter(*filtered_cloud);
 	ROS_INFO("Downsampled pointcloud has %lu points.", filtered_cloud->size());
 
