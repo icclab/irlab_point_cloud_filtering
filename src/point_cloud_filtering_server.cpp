@@ -13,6 +13,7 @@
 #include <pcl/sample_consensus/method_types.h>
 #include <pcl/sample_consensus/model_types.h>
 #include <pcl/segmentation/sac_segmentation.h>
+#include <pcl/filters/filter.h>
 #include <pcl/filters/passthrough.h>
 #include <pcl/filters/extract_indices.h>
 #include <pcl/filters/voxel_grid.h>
@@ -57,7 +58,7 @@ class ROSController {
     tf::TransformListener *listener;
     tf::TransformListener *listener2;
     sensor_msgs::PointCloud2 output, output1, output2;
-    pcl::PointCloud<pcl::PointXYZ> output_pcl, output1_pcl, output2_pcl;
+    pcl::PointCloud<pcl::PointXYZ> output_pcl, output1_pcl, output1_pcl_NaNs, output2_pcl, output2_pcl_NaNs;
 
 
     ros::ServiceServer service;
@@ -68,6 +69,8 @@ class ROSController {
     int tries;
     int messages;
     int max_messages = 10;
+
+    std::vector<int> indicies;
 
   public:
   
@@ -115,8 +118,9 @@ class ROSController {
        // listener->waitForTransform("/arm_camera_depth_optical_frame", (*input1).header.frame_id, (*input1).header.stamp, ros::Duration(5.0));
        // pcl_ros::transformPointCloud("/arm_camera_depth_optical_frame", *input1, output1, *listener);
         pcl::fromROSMsg(output1, output1_pcl);
-        output_pcl = output1_pcl;
-        output_pcl += output2_pcl;
+        pcl::removeNaNFromPointCloud(output1_pcl, output1_pcl_NaNs, indicies);
+        output_pcl = output1_pcl_NaNs;
+        output_pcl += output2_pcl_NaNs;
         pcl::toROSMsg(output_pcl, output);
         pub_3.publish(output);
         messages++;
@@ -163,8 +167,9 @@ class ROSController {
         listener2->waitForTransform("/arm_camera_depth_optical_frame", (*input2).header.frame_id, (*input2).header.stamp, ros::Duration(5.0));
         pcl_ros::transformPointCloud("/arm_camera_depth_optical_frame", *input2, output2, *listener2);
         pcl::fromROSMsg(output2, output2_pcl);
-        output_pcl = output2_pcl;
-        output_pcl += output1_pcl;
+        pcl::removeNaNFromPointCloud(output2_pcl, output2_pcl_NaNs, indicies);
+        output_pcl = output2_pcl_NaNs;
+        output_pcl += output1_pcl_NaNs;
         pcl::toROSMsg(output_pcl, output);
         pub_3.publish(output);
         messages++;
