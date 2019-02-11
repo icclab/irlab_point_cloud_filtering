@@ -57,8 +57,8 @@ class ROSController {
     ros::Publisher pub_3;
     tf::TransformListener *listener;
     tf::TransformListener *listener2;
-    sensor_msgs::PointCloud2 output, output1, output2;
-    pcl::PointCloud<pcl::PointXYZ> output_pcl, output1_pcl, output1_pcl_NaNs, output2_pcl, output2_pcl_NaNs;
+    sensor_msgs::PointCloud2 output, output1, output2, input2_filtered;
+    pcl::PointCloud<pcl::PointXYZ> output_pcl, output1_pcl, output_pcl_NaNs, output2_pcl;
 
 
     ros::ServiceServer service;
@@ -94,34 +94,15 @@ class ROSController {
 
     if (messages<max_messages)
     {
-       /* raw_cloud_temp = *input1;
-        if (messages>0)
-        {
-            bool result;
-            result = pcl::concatenatePointCloud(raw_cloud, raw_cloud_temp, raw_cloud);
-            if (result)
-            {
-                messages++;
-            }
-            else
-            {
-                ROS_INFO("Pointcloud dropped as concatenation failed");
-            }
-        }
-        else
-        {
-            messages++;
-            raw_cloud=raw_cloud_temp;
-        }*/
         ROS_INFO("Point cloud message received from ARM CAMERA" );
         ROS_INFO_STREAM((*input1).header.frame_id);
-       // listener->waitForTransform("/arm_camera_depth_optical_frame", (*input1).header.frame_id, (*input1).header.stamp, ros::Duration(5.0));
-       // pcl_ros::transformPointCloud("/arm_camera_depth_optical_frame", *input1, output1, *listener);
-        pcl::fromROSMsg(output1, output1_pcl);
-        pcl::removeNaNFromPointCloud(output1_pcl, output1_pcl_NaNs, indicies);
-        output_pcl = output1_pcl_NaNs;
-        output_pcl += output2_pcl_NaNs;
-        pcl::toROSMsg(output_pcl, output);
+        pcl::fromROSMsg(*input1, output1_pcl);
+
+        output_pcl = output1_pcl;
+        output_pcl += output2_pcl;
+
+        pcl::removeNaNFromPointCloud(output_pcl, output_pcl_NaNs, indicies);
+        pcl::toROSMsg(output_pcl_NaNs, output);
         pub_3.publish(output);
         messages++;
         raw_cloud=output;
@@ -143,33 +124,27 @@ class ROSController {
 
     if (messages<max_messages)
     {
-       /* raw_cloud_temp = *input2;
-        if (messages>0)
-        {
-            bool result;
-            result = pcl::concatenatePointCloud(raw_cloud, raw_cloud_temp, raw_cloud);
-            if (result)
-            {
-                messages++;
-            }
-            else
-            {
-                ROS_INFO("Pointcloud dropped as concatenation failed");
-            }
-        }
-        else
-        {
-            messages++;
-            raw_cloud=raw_cloud_temp;
-        }*/
         ROS_INFO("Point cloud message received from FRONT CAMERA" );
         ROS_INFO_STREAM((*input2).header.frame_id);
+
+
+        CloudType::Ptr cloud2filter	(new CloudType);
+        CloudType::Ptr filtered_cloud2	(new CloudType);
+        pcl::fromROSMsg(*input2, *cloud2filter);
+
+	    pcl::PassThrough<PointType> pass2;
+	    pass2.setInputCloud(cloud2filter);
+	    pass2.setFilterFieldName("z");
+	    pass2.setFilterLimits(0.0, 1.5);
+	    pass2.filter(*filtered_cloud2);
+	    pcl::removeNaNFromPointCloud(*filtered_cloud2, output_pcl_NaNs, indicies);
+
+
         listener2->waitForTransform("/arm_camera_depth_optical_frame", (*input2).header.frame_id, (*input2).header.stamp, ros::Duration(5.0));
-        pcl_ros::transformPointCloud("/arm_camera_depth_optical_frame", *input2, output2, *listener2);
-        pcl::fromROSMsg(output2, output2_pcl);
-        pcl::removeNaNFromPointCloud(output2_pcl, output2_pcl_NaNs, indicies);
-        output_pcl = output2_pcl_NaNs;
-        output_pcl += output1_pcl_NaNs;
+        pcl_ros::transformPointCloud("/arm_camera_depth_optical_frame", output_pcl_NaNs, output2_pcl, *listener2);
+
+        output_pcl = output2_pcl;
+        output_pcl += output1_pcl;
         pcl::toROSMsg(output_pcl, output);
         pub_3.publish(output);
         messages++;
@@ -425,7 +400,7 @@ int main(int argc, char **argv)
   ROS_INFO("Will register to pointcloud2 topic: %s", pointcloud_topic);
 
 
-char* pointcloud_topic_2 = "/summit_xl/front_rgbd_camera/depth/points";
+char* pointcloud_topic_2 = "/summit_xl/front_rgbd_camera/depth/points"; //on robot it is depth_registered
   if (argc == 3)
   {
     pointcloud_topic_2 = argv[2];
