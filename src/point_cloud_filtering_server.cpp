@@ -42,19 +42,32 @@
 #include <pcl/io/vtk_io.h>
 #include <pcl/io/vtk_lib_io.h>
 
+#include <tf/tf.h>
+#include <tf/transform_listener.h>
+
 class ROSController {
   protected:
     ros::NodeHandle n;
     ros::Subscriber sub;
+    ros::Subscriber sub_2;
     ros::Publisher pub;
     ros::Publisher pub_pc;
+
+    ros::Publisher pub_3;
+    tf::TransformListener *listener;
+    tf::TransformListener *listener2;
+    sensor_msgs::PointCloud2 output, output1, output2;
+    pcl::PointCloud<pcl::PointXYZ> output_pcl, output1_pcl, output2_pcl;
+
+
     ros::ServiceServer service;
     sensor_msgs::PointCloud2 raw_cloud;
     sensor_msgs::PointCloud2 raw_cloud_temp;
     char* pointcloud_topic;
+    char* pointcloud_topic_2;
     int tries;
     int messages;
-    int max_messages = 4;
+    int max_messages = 10;
 
   public:
   
@@ -65,19 +78,21 @@ class ROSController {
     tries = 0;
     messages =0;
     this->sub = this->n.subscribe(this->pointcloud_topic, 1, &ROSController::filter_pointcloud, this);
+    this->sub_2 = this->n.subscribe(this->pointcloud_topic_2, 1, &ROSController::filter_pointcloud_2, this);
     res.success = true;
     res.message = "Service triggered";
     ROS_INFO("sending back response: OK");
     return true;
   }
 
-  void filter_pointcloud(const sensor_msgs::PointCloud2::ConstPtr& msg)
+  void filter_pointcloud(const sensor_msgs::PointCloud2::ConstPtr& input1)
   {
-    ROS_INFO("Point cloud message received" );
+
+
     if (messages<max_messages)
     {
-        raw_cloud_temp = *msg;
-        if (messages>1)
+       /* raw_cloud_temp = *input1;
+        if (messages>0)
         {
             bool result;
             result = pcl::concatenatePointCloud(raw_cloud, raw_cloud_temp, raw_cloud);
@@ -94,24 +109,89 @@ class ROSController {
         {
             messages++;
             raw_cloud=raw_cloud_temp;
-        }
+        }*/
+        ROS_INFO("Point cloud message received from ARM CAMERA" );
+        ROS_INFO_STREAM((*input1).header.frame_id);
+       // listener->waitForTransform("/arm_camera_depth_optical_frame", (*input1).header.frame_id, (*input1).header.stamp, ros::Duration(5.0));
+       // pcl_ros::transformPointCloud("/arm_camera_depth_optical_frame", *input1, output1, *listener);
+        pcl::fromROSMsg(output1, output1_pcl);
+        output_pcl = output1_pcl;
+        output_pcl += output2_pcl;
+        pcl::toROSMsg(output_pcl, output);
+        pub_3.publish(output);
+        messages++;
+        raw_cloud=output;
+    ROS_INFO("The number of pointcloud messages received is: %d ", messages);
     }
     else
     {
         tries++;
         if ( this->filtering(raw_cloud) || tries > 3){
            this->sub.shutdown();
+           this->sub_2.shutdown();
+        }
+    }
+  }
+
+
+ void filter_pointcloud_2(const sensor_msgs::PointCloud2::ConstPtr& input2)
+  {
+
+    if (messages<max_messages)
+    {
+       /* raw_cloud_temp = *input2;
+        if (messages>0)
+        {
+            bool result;
+            result = pcl::concatenatePointCloud(raw_cloud, raw_cloud_temp, raw_cloud);
+            if (result)
+            {
+                messages++;
+            }
+            else
+            {
+                ROS_INFO("Pointcloud dropped as concatenation failed");
+            }
+        }
+        else
+        {
+            messages++;
+            raw_cloud=raw_cloud_temp;
+        }*/
+        ROS_INFO("Point cloud message received from FRONT CAMERA" );
+        ROS_INFO_STREAM((*input2).header.frame_id);
+        listener2->waitForTransform("/arm_camera_depth_optical_frame", (*input2).header.frame_id, (*input2).header.stamp, ros::Duration(5.0));
+        pcl_ros::transformPointCloud("/arm_camera_depth_optical_frame", *input2, output2, *listener2);
+        pcl::fromROSMsg(output2, output2_pcl);
+        output_pcl = output2_pcl;
+        output_pcl += output1_pcl;
+        pcl::toROSMsg(output_pcl, output);
+        pub_3.publish(output);
+        messages++;
+        raw_cloud=output;
+    ROS_INFO("The number of pointcloud messages received is: %d ", messages);
+    }
+    else
+    {
+        tries++;
+        if ( this->filtering(raw_cloud) || tries > 3){
+           this->sub.shutdown();
+           this->sub_2.shutdown();
         }
     }
 
+
   }
 
-  ROSController(ros::NodeHandle n, char* pointcloud_topic);
+  ROSController(ros::NodeHandle n, char* pointcloud_topic, char* pointcloud_topic_2);
+  //ROSController(ros::NodeHandle n, char* pointcloud_topic);
 
   bool filtering(sensor_msgs::PointCloud2 req)
 {
 
     ROS_INFO("The number of pointcloud messages received is: %d ", messages);
+	tries = 0;
+    messages=0;
 	CloudType::Ptr filtered_cloud	(new CloudType);
 	CloudType::Ptr plane_cloud		(new CloudType);
 
@@ -313,13 +393,19 @@ class ROSController {
   
 };
 
-ROSController::ROSController(ros::NodeHandle n, char* pointcloud_topic) {
+ROSController::ROSController(ros::NodeHandle n, char* pointcloud_topic, char* pointcloud_topic_2) {
+//ROSController::ROSController(ros::NodeHandle n, char* pointcloud_topic) {
   this->n = n;
   this->service = n.advertiseService("filter_pointcloud", &ROSController::trigger_filter, this);
 //  pub = rospy.Publisher('cloud_indexed', CloudIndexed, queue_size=1, latch=True) 
-  this->pub = n.advertise<gpd::CloudIndexed>("/cloud_indexed", 100, true);
-  this->pub_pc = n.advertise<sensor_msgs::PointCloud2>("/cloud_indexed_pc_only", 100, true);
+  this->pub = n.advertise<gpd::CloudIndexed>("/cloud_indexed", 100, false);
+  this->pub_pc = n.advertise<sensor_msgs::PointCloud2>("/cloud_indexed_pc_only", 100, false);
+
+  this->pub_3 = n.advertise<sensor_msgs::PointCloud2>("/cloud_merged", 100, false);
+  this->listener = new tf::TransformListener(ros::Duration(10));
+  this->listener2 = new tf::TransformListener(ros::Duration(10));
   this->pointcloud_topic = pointcloud_topic;
+  this->pointcloud_topic_2 = pointcloud_topic_2;
 }
 
 
@@ -332,12 +418,23 @@ int main(int argc, char **argv)
     pointcloud_topic = argv[1];
   }
   ROS_INFO("Will register to pointcloud2 topic: %s", pointcloud_topic);
+
+
+char* pointcloud_topic_2 = "/summit_xl/front_rgbd_camera/depth/points";
+  if (argc == 3)
+  {
+    pointcloud_topic_2 = argv[2];
+  }
+  ROS_INFO("Will register to pointcloud2 topic: %s", pointcloud_topic_2);
+
   ros::NodeHandle n;
 //  ros::ServiceServer service = n.advertiseService("filter_pointcloud", trigger_filter);
 //  ros::Subscriber sub = n.subscribe("/camera/depth_registered/points", 1000, filter_pointcloud);
 
 //  ros::spin();
-  ROSController* c = new ROSController(n, pointcloud_topic);
+
+  ROSController* c = new ROSController(n, pointcloud_topic, pointcloud_topic_2);
+  //ROSController* c = new ROSController(n, pointcloud_topic);
   ROS_INFO("Ready to filter point clouds.");
   ros::spin();
   return 0;
