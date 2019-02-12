@@ -67,8 +67,12 @@ class ROSController {
     char* pointcloud_topic;
     char* pointcloud_topic_2;
     int tries;
-    int messages;
-    int max_messages = 10;
+    int max_messages_tot = 6;
+    int max_messages_t1 = max_messages_tot/2;
+    int max_messages_t2 = max_messages_tot/2;
+    int messages_t1=0;
+    int messages_t2=0;
+    bool tf_result;
 
     std::vector<int> indicies;
 
@@ -79,7 +83,8 @@ class ROSController {
   {
     ROS_INFO("Received point cloud filtering request");
     tries = 0;
-    messages =0;
+    messages_t1 =0;
+    messages_t2 =0;
     this->sub = this->n.subscribe(this->pointcloud_topic, 1, &ROSController::filter_pointcloud, this);
     this->sub_2 = this->n.subscribe(this->pointcloud_topic_2, 1, &ROSController::filter_pointcloud_2, this);
     res.success = true;
@@ -92,7 +97,7 @@ class ROSController {
   {
 
 
-    if (messages<max_messages)
+    if (messages_t1<max_messages_t1)
     {
         ROS_INFO("Point cloud message received from ARM CAMERA" );
         ROS_INFO_STREAM((*input1).header.frame_id);
@@ -104,11 +109,11 @@ class ROSController {
         pcl::removeNaNFromPointCloud(output_pcl, output_pcl_NaNs, indicies);
         pcl::toROSMsg(output_pcl_NaNs, output);
         pub_3.publish(output);
-        messages++;
+        messages_t1++;
         raw_cloud=output;
-    ROS_INFO("The number of pointcloud messages received is: %d ", messages);
+    ROS_INFO("The number of pointcloud messages received from ARM CAMERA is: %d ", messages_t1);
     }
-    else
+    else if(messages_t2>=max_messages_t2)
     {
         tries++;
         if ( this->filtering(raw_cloud) || tries > 3){
@@ -122,7 +127,7 @@ class ROSController {
  void filter_pointcloud_2(const sensor_msgs::PointCloud2::ConstPtr& input2)
   {
 
-    if (messages<max_messages)
+    if (messages_t2<max_messages_t2)
     {
         ROS_INFO("Point cloud message received from FRONT CAMERA" );
         ROS_INFO_STREAM((*input2).header.frame_id);
@@ -135,23 +140,27 @@ class ROSController {
 	    pcl::PassThrough<PointType> pass2;
 	    pass2.setInputCloud(cloud2filter);
 	    pass2.setFilterFieldName("z");
-	    pass2.setFilterLimits(0.0, 1.5);
+	    pass2.setFilterLimits(0.0, 1.2);
 	    pass2.filter(*filtered_cloud2);
 	    pcl::removeNaNFromPointCloud(*filtered_cloud2, output_pcl_NaNs, indicies);
 
+        ros::Time t = ros::Time(0);
+       // listener2->waitForTransform("/arm_camera_depth_optical_frame", (*input2).header.frame_id, (*input2).header.stamp, ros::Duration(3.0));
+        listener2->waitForTransform("/arm_camera_depth_optical_frame", (*input2).header.frame_id, t, ros::Duration(3.0));
+        tf_result = pcl_ros::transformPointCloud("/arm_camera_depth_optical_frame", output_pcl_NaNs, output2_pcl, *listener2);
 
-        listener2->waitForTransform("/arm_camera_depth_optical_frame", (*input2).header.frame_id, (*input2).header.stamp, ros::Duration(5.0));
-        pcl_ros::transformPointCloud("/arm_camera_depth_optical_frame", output_pcl_NaNs, output2_pcl, *listener2);
-
-        output_pcl = output2_pcl;
-        output_pcl += output1_pcl;
-        pcl::toROSMsg(output_pcl, output);
-        pub_3.publish(output);
-        messages++;
-        raw_cloud=output;
-    ROS_INFO("The number of pointcloud messages received is: %d ", messages);
+        if (tf_result == true)
+            {
+            output_pcl = output2_pcl;
+            output_pcl += output1_pcl;
+            pcl::toROSMsg(output_pcl, output);
+            pub_3.publish(output);
+            messages_t2++;
+            raw_cloud=output;
+            }
+    ROS_INFO("The number of pointcloud messages received from FRONT CAMERA is: %d ", messages_t2);
     }
-    else
+    else if(messages_t1>=max_messages_t1)
     {
         tries++;
         if ( this->filtering(raw_cloud) || tries > 3){
@@ -169,9 +178,10 @@ class ROSController {
   bool filtering(sensor_msgs::PointCloud2 req)
 {
 
-    ROS_INFO("The number of pointcloud messages received is: %d ", messages);
+    ROS_INFO("The number of pointcloud messages received is: %d ", messages_t1+messages_t2);
 	tries = 0;
-    messages=0;
+    messages_t1=0;
+    messages_t2=0;
 	CloudType::Ptr filtered_cloud	(new CloudType);
 	CloudType::Ptr plane_cloud		(new CloudType);
 
@@ -400,7 +410,7 @@ int main(int argc, char **argv)
   ROS_INFO("Will register to pointcloud2 topic: %s", pointcloud_topic);
 
 
-char* pointcloud_topic_2 = "/summit_xl/front_rgbd_camera/depth/points"; //on robot it is depth_registered
+char* pointcloud_topic_2 = "/summit_xl/front_rgbd_camera/depth_registered/points"; //on robot it is depth_registered
   if (argc == 3)
   {
     pointcloud_topic_2 = argv[2];

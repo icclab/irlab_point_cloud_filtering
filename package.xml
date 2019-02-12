@@ -57,6 +57,7 @@
   <exec_depend>roscpp</exec_depend>
   <exec_depend>rospy</exec_depend>
   <depend>gpd</depend>
+  <build_depend>tf</build_depend>
   <depend>std_srvs</depend>
   <depend>pcl</depend>
   <depend>pcl_conversions</depend>
