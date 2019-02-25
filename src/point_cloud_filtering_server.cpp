@@ -289,18 +289,18 @@ class ROSController {
 
         }
 
-    std::stringstream ss;
+  //  std::stringstream ss;
 
-    ss << "/home/milt/catkin_ws_kinetic/src/gpd/scripts/cloud_cluster_" << j << ".pcd";
-    writer.write<pcl::PointXYZ> (ss.str (), *cloud_cluster, false); //*
-    j++;
+   // ss << "/catkin_ws_kinetic/src/gpd/scripts/cloud_cluster_" << j << ".pcd";
+    //writer.write<pcl::PointXYZ> (ss.str (), *cloud_cluster, false); //*
+   // j++;
 
         //Merge current clusters to whole point cloud
     *clustered_cloud += *cloud_cluster;
     }
-    std::stringstream ss_2;
-    ss_2 << "/home/milt/catkin_ws_kinetic/src/gpd/scripts/merged_" << j << ".pcd";
-    writer.write<pcl::PointXYZ> (ss_2.str (), *clustered_cloud, false);
+    //std::stringstream ss_2;
+    //ss_2 << "/catkin_ws_kinetic/src/gpd/scripts/merged_" << j << ".pcd";
+   // writer.write<pcl::PointXYZ> (ss_2.str (), *clustered_cloud, false);
 
 
 
@@ -410,7 +410,7 @@ int main(int argc, char **argv)
   ROS_INFO("Will register to pointcloud2 topic: %s", pointcloud_topic);
 
 
-char* pointcloud_topic_2 = "/summit_xl/front_rgbd_camera/depth_registered/points"; //on robot it is depth_registered
+char* pointcloud_topic_2 = "/summit_xl/front_rgbd_camera/depth/points"; //on robot it is depth_registered
   if (argc == 3)
   {
     pointcloud_topic_2 = argv[2];
