@@ -35,7 +35,6 @@
 #include <pcl_ros/transforms.h>
 
 #include <pcl/common/common.h>
-#include <pcl/io/pcd_io.h>
 #include <pcl/features/normal_3d_omp.h>
 #include <pcl/surface/mls.h>
 #include <pcl/surface/poisson.h>
@@ -219,18 +218,18 @@ class ROSController {
 
         }
 
-    std::stringstream ss;
+  //  std::stringstream ss;
 
-    ss << "/home/milt/catkin_ws_kinetic/src/gpd/scripts/cloud_cluster_" << j << ".pcd";
-    writer.write<pcl::PointXYZ> (ss.str (), *cloud_cluster, false); //*
-    j++;
+  //  ss << "/home/milt/catkin_ws_kinetic/src/gpd/scripts/cloud_cluster_" << j << ".pcd";
+  //  writer.write<pcl::PointXYZ> (ss.str (), *cloud_cluster, false); //*
+  //  j++;
 
         //Merge current clusters to whole point cloud
     *clustered_cloud += *cloud_cluster;
     }
-    std::stringstream ss_2;
-    ss_2 << "/home/milt/catkin_ws_kinetic/src/gpd/scripts/merged_" << j << ".pcd";
-    writer.write<pcl::PointXYZ> (ss_2.str (), *clustered_cloud, false);
+    //std::stringstream ss_2;
+   // ss_2 << "/home/milt/catkin_ws_kinetic/src/gpd/scripts/merged_" << j << ".pcd";
+   // writer.write<pcl::PointXYZ> (ss_2.str (), *clustered_cloud, false);
 
 
 
