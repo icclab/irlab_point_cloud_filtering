@@ -1,7 +1,7 @@
 #include "ros/ros.h"
 #include "std_srvs/Trigger.h"
 #include "sensor_msgs/PointCloud2.h"
-#include "gpd/CloudIndexed.h"
+#include "../include/CloudIndexed.h"
 #include <iostream>
 #include <vector>
 #include <numeric>
@@ -67,7 +67,7 @@ class ROSController {
     char* pointcloud_topic;
     char* pointcloud_topic_2;
     int tries;
-    int max_messages_tot = 6;
+    int max_messages_tot = 4;
     int max_messages_t1 = max_messages_tot/2;
     int max_messages_t2 = max_messages_tot/2;
     int messages_t1=0;
@@ -106,8 +106,9 @@ class ROSController {
         output_pcl = output1_pcl;
         output_pcl += output2_pcl;
 
-        pcl::removeNaNFromPointCloud(output_pcl, output_pcl_NaNs, indicies);
-        pcl::toROSMsg(output_pcl_NaNs, output);
+       // pcl::removeNaNFromPointCloud(output_pcl, output_pcl_NaNs, indicies);
+       // pcl::toROSMsg(output_pcl_NaNs, output);
+        pcl::toROSMsg(output_pcl, output);
         pub_3.publish(output);
         messages_t1++;
         raw_cloud=output;
@@ -142,12 +143,13 @@ class ROSController {
 	    pass2.setFilterFieldName("z");
 	    pass2.setFilterLimits(0.0, 1.2);
 	    pass2.filter(*filtered_cloud2);
-	    pcl::removeNaNFromPointCloud(*filtered_cloud2, output_pcl_NaNs, indicies);
+	   // pcl::removeNaNFromPointCloud(*filtered_cloud2, output_pcl_NaNs, indicies);
 
         ros::Time t = ros::Time(0);
        // listener2->waitForTransform("/arm_camera_depth_optical_frame", (*input2).header.frame_id, (*input2).header.stamp, ros::Duration(3.0));
-        listener2->waitForTransform("/arm_camera_depth_optical_frame", (*input2).header.frame_id, t, ros::Duration(3.0));
-        tf_result = pcl_ros::transformPointCloud("/arm_camera_depth_optical_frame", output_pcl_NaNs, output2_pcl, *listener2);
+        listener2->waitForTransform("/arm_camera_depth_optical_frame", (*input2).header.frame_id, t, ros::Duration(1.0));
+      //  tf_result = pcl_ros::transformPointCloud("/arm_camera_depth_optical_frame", output_pcl_NaNs, output2_pcl, *listener2);
+        tf_result = pcl_ros::transformPointCloud("/arm_camera_depth_optical_frame", *filtered_cloud2, output2_pcl, *listener2);
 
         if (tf_result == true)
             {
@@ -388,10 +390,10 @@ ROSController::ROSController(ros::NodeHandle n, char* pointcloud_topic, char* po
   this->n = n;
   this->service = n.advertiseService("filter_pointcloud", &ROSController::trigger_filter, this);
 //  pub = rospy.Publisher('cloud_indexed', CloudIndexed, queue_size=1, latch=True) 
-  this->pub = n.advertise<gpd::CloudIndexed>("/cloud_indexed", 100, false);
-  this->pub_pc = n.advertise<sensor_msgs::PointCloud2>("/cloud_indexed_pc_only", 100, false);
+  this->pub = n.advertise<gpd::CloudIndexed>("/cloud_indexed", 10, true);
+  this->pub_pc = n.advertise<sensor_msgs::PointCloud2>("/cloud_indexed_pc_only", 10, true);
 
-  this->pub_3 = n.advertise<sensor_msgs::PointCloud2>("/cloud_merged", 100, false);
+  this->pub_3 = n.advertise<sensor_msgs::PointCloud2>("/cloud_merged", 10, true);
   this->listener = new tf::TransformListener(ros::Duration(10));
   this->listener2 = new tf::TransformListener(ros::Duration(10));
   this->pointcloud_topic = pointcloud_topic;
