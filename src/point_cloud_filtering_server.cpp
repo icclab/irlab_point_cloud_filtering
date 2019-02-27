@@ -1,7 +1,7 @@
 #include "ros/ros.h"
 #include "std_srvs/Trigger.h"
 #include "sensor_msgs/PointCloud2.h"
-#include "../include/CloudIndexed.h"
+#include "gpd/CloudIndexed.h"
 #include <iostream>
 #include <vector>
 #include <numeric>
