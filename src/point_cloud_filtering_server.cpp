@@ -67,7 +67,7 @@ class ROSController {
     char* pointcloud_topic;
     char* pointcloud_topic_2;
     int tries;
-    int max_messages_tot = 4;
+    int max_messages_tot = 8;
     int max_messages_t1 = max_messages_tot/2;
     int max_messages_t2 = max_messages_tot/2;
     int messages_t1=0;
@@ -147,9 +147,9 @@ class ROSController {
 
         ros::Time t = ros::Time(0);
        // listener2->waitForTransform("/arm_camera_depth_optical_frame", (*input2).header.frame_id, (*input2).header.stamp, ros::Duration(3.0));
-        listener2->waitForTransform("/arm_camera_depth_optical_frame", (*input2).header.frame_id, t, ros::Duration(1.0));
+        listener2->waitForTransform("/arm_camera_color_optical_frame", (*input2).header.frame_id, t, ros::Duration(5.0));
       //  tf_result = pcl_ros::transformPointCloud("/arm_camera_depth_optical_frame", output_pcl_NaNs, output2_pcl, *listener2);
-        tf_result = pcl_ros::transformPointCloud("/arm_camera_depth_optical_frame", *filtered_cloud2, output2_pcl, *listener2);
+        tf_result = pcl_ros::transformPointCloud("/arm_camera_color_optical_frame", *filtered_cloud2, output2_pcl, *listener2);
 
         if (tf_result == true)
             {
