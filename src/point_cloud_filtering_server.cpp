@@ -203,11 +203,17 @@ class ROSController {
     pcl::fromROSMsg(req, *filtered_cloud);
 	ROS_INFO("Loaded pointcloud with %lu points.", filtered_cloud->size());
 
-	pcl::PassThrough<PointType> pass;
-	pass.setInputCloud(filtered_cloud);
-	pass.setFilterFieldName("x");
-	pass.setFilterLimits(0.5, 1.8);
-	pass.filter(*filtered_cloud);
+	pcl::PassThrough<PointType> passx;
+	passx.setInputCloud(filtered_cloud);
+	passx.setFilterFieldName("x");
+	passx.setFilterLimits(0.5, 1.8);
+	passx.filter(*filtered_cloud);
+
+    pcl::PassThrough<PointType> passz;
+	passz.setInputCloud(filtered_cloud);
+	passz.setFilterFieldName("z");
+	passz.setFilterLimits(0.0, 0.6);
+	passz.filter(*filtered_cloud);
 	ROS_INFO("Pointcloud after max range filtering has %lu points.", filtered_cloud->size());
 
 /*	pcl::VoxelGrid<PointType> sor;
