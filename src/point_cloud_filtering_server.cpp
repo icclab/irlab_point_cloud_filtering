@@ -56,9 +56,10 @@ class ROSController {
 
     ros::Publisher pub_3;
     tf::TransformListener *listener;
+    tf::TransformListener *listener1;
     tf::TransformListener *listener2;
     sensor_msgs::PointCloud2 output, output1, output2, input2_filtered;
-    pcl::PointCloud<pcl::PointXYZ> output_pcl, output1_pcl, output_pcl_NaNs, output2_pcl;
+    pcl::PointCloud<pcl::PointXYZ> output_pcl, output1_pcl,  output2_pcl, output_pcl_NaNs_1, output_pcl_NaNs_2;
 
 
     ros::ServiceServer service;
@@ -67,7 +68,7 @@ class ROSController {
     char* pointcloud_topic;
     char* pointcloud_topic_2;
     int tries;
-    int max_messages_tot = 8;
+    int max_messages_tot = 4;
     int max_messages_t1 = max_messages_tot/2;
     int max_messages_t2 = max_messages_tot/2;
     int messages_t1=0;
@@ -101,17 +102,30 @@ class ROSController {
     {
         ROS_INFO("Point cloud message received from ARM CAMERA" );
         ROS_INFO_STREAM((*input1).header.frame_id);
-        pcl::fromROSMsg(*input1, output1_pcl);
+        CloudType::Ptr cloud2filter1	(new CloudType);
+        CloudType::Ptr filtered_cloud1	(new CloudType);
+        pcl::fromROSMsg(*input1, *cloud2filter1);
 
-        output_pcl = output1_pcl;
-        output_pcl += output2_pcl;
+	    pcl::PassThrough<PointType> pass1;
+	    pass1.setInputCloud(cloud2filter1);
+	    pass1.setFilterFieldName("z");
+	    pass1.setFilterLimits(0.2, 1.5);
+	    pass1.filter(*filtered_cloud1);
+	    pcl::removeNaNFromPointCloud(*filtered_cloud1, output_pcl_NaNs_1, indicies);
 
-       // pcl::removeNaNFromPointCloud(output_pcl, output_pcl_NaNs, indicies);
-       // pcl::toROSMsg(output_pcl_NaNs, output);
-        pcl::toROSMsg(output_pcl, output);
-        pub_3.publish(output);
-        messages_t1++;
-        raw_cloud=output;
+        ros::Time t1 = ros::Time::now();
+        listener1->waitForTransform("/summit_xl_base_footprint", (*input1).header.frame_id, t1, ros::Duration(5.0));
+        tf_result = pcl_ros::transformPointCloud("/summit_xl_base_footprint", output_pcl_NaNs_1, output1_pcl, *listener1);
+
+        if (tf_result == true)
+            {
+            output_pcl = output1_pcl;
+            output_pcl += output2_pcl;
+            pcl::toROSMsg(output_pcl, output);
+            pub_3.publish(output);
+            messages_t1++;
+            raw_cloud=output;
+            }
     ROS_INFO("The number of pointcloud messages received from ARM CAMERA is: %d ", messages_t1);
     }
     else if(messages_t2>=max_messages_t2)
@@ -134,22 +148,20 @@ class ROSController {
         ROS_INFO_STREAM((*input2).header.frame_id);
 
 
-        CloudType::Ptr cloud2filter	(new CloudType);
+        CloudType::Ptr cloud2filter2	(new CloudType);
         CloudType::Ptr filtered_cloud2	(new CloudType);
-        pcl::fromROSMsg(*input2, *cloud2filter);
+        pcl::fromROSMsg(*input2, *cloud2filter2);
 
 	    pcl::PassThrough<PointType> pass2;
-	    pass2.setInputCloud(cloud2filter);
+	    pass2.setInputCloud(cloud2filter2);
 	    pass2.setFilterFieldName("z");
-	    pass2.setFilterLimits(0.0, 1.2);
+	    pass2.setFilterLimits(0.1, 1.2);
 	    pass2.filter(*filtered_cloud2);
-	   // pcl::removeNaNFromPointCloud(*filtered_cloud2, output_pcl_NaNs, indicies);
+	    pcl::removeNaNFromPointCloud(*filtered_cloud2, output_pcl_NaNs_2, indicies);
 
         ros::Time t = ros::Time(0);
-       // listener2->waitForTransform("/arm_camera_depth_optical_frame", (*input2).header.frame_id, (*input2).header.stamp, ros::Duration(3.0));
-        listener2->waitForTransform("/arm_camera_color_optical_frame", (*input2).header.frame_id, t, ros::Duration(5.0));
-      //  tf_result = pcl_ros::transformPointCloud("/arm_camera_depth_optical_frame", output_pcl_NaNs, output2_pcl, *listener2);
-        tf_result = pcl_ros::transformPointCloud("/arm_camera_color_optical_frame", *filtered_cloud2, output2_pcl, *listener2);
+        listener2->waitForTransform("/summit_xl_base_footprint", (*input2).header.frame_id, t, ros::Duration(5.0));
+        tf_result = pcl_ros::transformPointCloud("/summit_xl_base_footprint", output_pcl_NaNs_2, output2_pcl, *listener2);
 
         if (tf_result == true)
             {
@@ -181,6 +193,7 @@ class ROSController {
 {
 
     ROS_INFO("The number of pointcloud messages received is: %d ", messages_t1+messages_t2);
+    ROS_INFO_STREAM(req.header.frame_id);
 	tries = 0;
     messages_t1=0;
     messages_t2=0;
@@ -192,8 +205,8 @@ class ROSController {
 
 	pcl::PassThrough<PointType> pass;
 	pass.setInputCloud(filtered_cloud);
-	pass.setFilterFieldName("z");
-	pass.setFilterLimits(0.0, 1.0);
+	pass.setFilterFieldName("x");
+	pass.setFilterLimits(0.5, 1.8);
 	pass.filter(*filtered_cloud);
 	ROS_INFO("Pointcloud after max range filtering has %lu points.", filtered_cloud->size());
 
@@ -203,12 +216,12 @@ class ROSController {
 	sor.filter(*filtered_cloud);
 	ROS_INFO("Downsampled pointcloud has %lu points.", filtered_cloud->size());*/
 
-	pcl::StatisticalOutlierRemoval<PointType> stat_fil;
+/*	pcl::StatisticalOutlierRemoval<PointType> stat_fil;
 	stat_fil.setInputCloud(filtered_cloud);
 	stat_fil.setMeanK(50);
 	stat_fil.setStddevMulThresh(1.0);
 	stat_fil.filter(*filtered_cloud);
-	ROS_INFO("Pointcloud after outlier filtering has %lu points.", filtered_cloud->size());
+	ROS_INFO("Pointcloud after outlier filtering has %lu points.", filtered_cloud->size());*/  //it was filtering out too many points for the small object in simulation
 
 	//Followed this tutorial http://www.pointclouds.org/documentation/tutorials/cluster_extraction.php
 	pcl::ModelCoefficients::Ptr coeffs(new pcl::ModelCoefficients);
@@ -395,6 +408,7 @@ ROSController::ROSController(ros::NodeHandle n, char* pointcloud_topic, char* po
 
   this->pub_3 = n.advertise<sensor_msgs::PointCloud2>("/cloud_merged", 10, true);
   this->listener = new tf::TransformListener(ros::Duration(10));
+  this->listener1 = new tf::TransformListener(ros::Duration(10));
   this->listener2 = new tf::TransformListener(ros::Duration(10));
   this->pointcloud_topic = pointcloud_topic;
   this->pointcloud_topic_2 = pointcloud_topic_2;
