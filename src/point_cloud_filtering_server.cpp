@@ -2,6 +2,7 @@
 #include "std_srvs/Trigger.h"
 #include "sensor_msgs/PointCloud2.h"
 #include "gpd/CloudIndexed.h"
+#include "gpd/CloudSamples.h"
 #include <iostream>
 #include <vector>
 #include <numeric>
@@ -25,6 +26,8 @@
 //#include <pcl/ros/conversions.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/point_cloud2_iterator.h>
+#include <sensor_msgs/PointCloud.h>
+#include <sensor_msgs/point_cloud_conversion.h>
 #include "typedefs.h"
 //using namespace sensor_msgs;
 
@@ -46,12 +49,14 @@
 #include <tf/tf.h>
 #include <tf/transform_listener.h>
 
+
 class ROSController {
   protected:
     ros::NodeHandle n;
     ros::Subscriber sub;
     ros::Subscriber sub_2;
     ros::Publisher pub;
+    ros::Publisher pub_sam;
     ros::Publisher pub_pc;
 
     ros::Publisher pub_3;
@@ -394,11 +399,56 @@ class ROSController {
 		res.cloud_sources.camera_source.push_back(val);
 	}
 
+  gpd::CloudSamples res_sam;
+    //define cloud source
+	res_sam.cloud_sources.cloud = *res_cloud;
+
+	pcl::PointCloud<pcl::PointXYZ> msg_;
+    pcl::fromROSMsg(*res_cloud,msg_);
+    ROS_INFO_STREAM(msg_.points[0]);
+
+    pcl::PointXYZ minPt, maxPt;
+    pcl::getMinMax3D (msg_, minPt, maxPt);
+    std::cout << "Max x: " << maxPt.x << std::endl;
+    std::cout << "Max y: " << maxPt.y << std::endl;
+    std::cout << "Max z: " << maxPt.z << std::endl;
+    std::cout << "Min x: " << minPt.x << std::endl;
+    std::cout << "Min y: " << minPt.y << std::endl;
+    std::cout << "Min z: " << minPt.z << std::endl;
+
+	// set list of points where to look for grasps
+	std::vector<geometry_msgs::Point> vec1;
+	//geometry_msgs::Point p1;
+    //p1.x = 0.98;
+    //p1.y = 0.31;
+    //p1.z = 0.05;
+    //vec1.push_back(p1);
+
+    geometry_msgs::Point p2;
+    p2.x = maxPt.x;
+    p2.y = maxPt.y;
+    p2.z = maxPt.z;
+    vec1.push_back(p2);
+    ROS_INFO_STREAM(p2);
+
+	res_sam.samples = vec1;
+		// define sources
+	std_msgs::Int64 val_sam;
+	val_sam.data = 0;
+	std::vector<geometry_msgs::Point> vec2;
+	vec2.push_back(geometry_msgs::Point());
+	res_sam.cloud_sources.view_points = vec2;
+
+
+
   ROS_INFO("Publishing indexed pointCloud"); 
   this->pub.publish(res);
+
+  ROS_INFO("Publishing Samples pointCloud");
+  this->pub_sam.publish(res_sam);
  // this->pub_pc.publish(res.cloud_sources.cloud);
   this->pub_pc.publish(*res_cloud);
-  ROS_INFO("Published indexed pointCloud");
+  ROS_INFO("Published pointCloud only");
   return true;
 }
   
@@ -410,6 +460,7 @@ ROSController::ROSController(ros::NodeHandle n, char* pointcloud_topic, char* po
   this->service = n.advertiseService("filter_pointcloud", &ROSController::trigger_filter, this);
 //  pub = rospy.Publisher('cloud_indexed', CloudIndexed, queue_size=1, latch=True) 
   this->pub = n.advertise<gpd::CloudIndexed>("/cloud_indexed", 10, true);
+  this->pub_sam = n.advertise<gpd::CloudSamples>("/cloud_samples", 10, true);
   this->pub_pc = n.advertise<sensor_msgs::PointCloud2>("/cloud_indexed_pc_only", 10, true);
 
   this->pub_3 = n.advertise<sensor_msgs::PointCloud2>("/cloud_merged", 10, true);
