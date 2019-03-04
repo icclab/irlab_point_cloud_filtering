@@ -246,7 +246,7 @@ class ROSController {
 	seg.setMaxIterations(1000);
 
 
-	
+	//http://pointclouds.org/documentation/tutorials/extract_indices.php#extract-indices
 	int i = 0, nr_points = (int) filtered_cloud->size();
 //	while (filtered_cloud->size() > 0.3 * nr_points)
 //	{
@@ -392,12 +392,36 @@ class ROSController {
 	std::vector<geometry_msgs::Point> vec;
 	vec.push_back(geometry_msgs::Point());
 	res.cloud_sources.view_points = vec;
+
+	//some add-ons to select only those points that have a z-axis that is max 10%lower than the max z-axis in the pointcloud
+	pcl::PointCloud<pcl::PointXYZ> msg_ci;
+    pcl::fromROSMsg(*res_cloud,msg_ci);
+    pcl::PointXYZ minPt_ci, maxPt_ci;
+    pcl::getMinMax3D (msg_ci, minPt_ci, maxPt_ci);
+    std::cout << "Max x: " << maxPt_ci.x << std::endl;
+    std::cout << "Max y: " << maxPt_ci.y << std::endl;
+    std::cout << "Max z: " << maxPt_ci.z << std::endl;
+    std::cout << "Min x: " << minPt_ci.x << std::endl;
+    std::cout << "Min y: " << minPt_ci.y << std::endl;
+    std::cout << "Min z: " << minPt_ci.z << std::endl;
+    float perc_z_axis = 0.9;
+    float max_z_point = perc_z_axis * maxPt_ci.z;
+    int cont_added_indexes = 0;
+
 	for (int i = 0; i < cluster_indices[0].indices.size(); ++i) {
 	  std_msgs::Int64 index;
 	  index.data = cluster_indices[0].indices[i];
+	 // std::cout << "Indeces: " << index.data << std::endl;
+	 //std::cout << "Points: " << filtered_cloud->points[index.data] << std::endl;
+	  if ((filtered_cloud->points[index.data].z) > (max_z_point))
+		{
 		res.indices.push_back(index);
-		res.cloud_sources.camera_source.push_back(val);
+		cont_added_indexes++;
+	    }
+	  res.cloud_sources.camera_source.push_back(val);
 	}
+	std::cout << cont_added_indexes << "Indexes added to cloud_indexed as z-coordinate is in the top " << float (1.0 -perc_z_axis)*100 << "%" << std::endl;
+
 
   gpd::CloudSamples res_sam;
     //define cloud source
@@ -409,12 +433,12 @@ class ROSController {
 
     pcl::PointXYZ minPt, maxPt;
     pcl::getMinMax3D (msg_, minPt, maxPt);
-    std::cout << "Max x: " << maxPt.x << std::endl;
-    std::cout << "Max y: " << maxPt.y << std::endl;
-    std::cout << "Max z: " << maxPt.z << std::endl;
-    std::cout << "Min x: " << minPt.x << std::endl;
-    std::cout << "Min y: " << minPt.y << std::endl;
-    std::cout << "Min z: " << minPt.z << std::endl;
+  //  std::cout << "Max x: " << maxPt.x << std::endl;
+   // std::cout << "Max y: " << maxPt.y << std::endl;
+  //  std::cout << "Max z: " << maxPt.z << std::endl;
+  //  std::cout << "Min x: " << minPt.x << std::endl;
+  //  std::cout << "Min y: " << minPt.y << std::endl;
+  //  std::cout << "Min z: " << minPt.z << std::endl;
 
 	// set list of points where to look for grasps
 	std::vector<geometry_msgs::Point> vec1;
@@ -426,21 +450,24 @@ class ROSController {
     //p1.y = 0.31;
     //p1.z = 0.05;
     vec1.push_back(p1);
-    ROS_INFO_STREAM(p1);
+    //ROS_INFO_STREAM(p1);
+    std::cout << "Adding sample to cloud_sampled: " << p1 << std::endl;
 
     geometry_msgs::Point p2;
     p2.x = maxPt.x;
     p2.y = maxPt.y;
     p2.z = maxPt.z;
     vec1.push_back(p2);
-    ROS_INFO_STREAM(p2);
+   // ROS_INFO_STREAM(p2);
+    std::cout << "Adding sample to cloud_sampled: " << p2 << std::endl;
 
     geometry_msgs::Point p3;
     p3.x = (minPt.x + maxPt.x)/2;
     p3.y = (minPt.y + maxPt.y)/2;
     p3.z = maxPt.z;
     vec1.push_back(p3);
-    ROS_INFO_STREAM(p3);
+    //ROS_INFO_STREAM(p3);
+    std::cout << "Adding sample to cloud_sampled: " << p1 << std::endl;
 
 	res_sam.samples = vec1;
 		// define sources
