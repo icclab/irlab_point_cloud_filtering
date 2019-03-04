@@ -418,11 +418,15 @@ class ROSController {
 
 	// set list of points where to look for grasps
 	std::vector<geometry_msgs::Point> vec1;
-	//geometry_msgs::Point p1;
+	geometry_msgs::Point p1;
+    p1.x = minPt.x;
+    p1.y = minPt.y;
+    p1.z = maxPt.z;
     //p1.x = 0.98;
     //p1.y = 0.31;
     //p1.z = 0.05;
-    //vec1.push_back(p1);
+    vec1.push_back(p1);
+    ROS_INFO_STREAM(p1);
 
     geometry_msgs::Point p2;
     p2.x = maxPt.x;
@@ -430,6 +434,13 @@ class ROSController {
     p2.z = maxPt.z;
     vec1.push_back(p2);
     ROS_INFO_STREAM(p2);
+
+    geometry_msgs::Point p3;
+    p3.x = (minPt.x + maxPt.x)/2;
+    p3.y = (minPt.y + maxPt.y)/2;
+    p3.z = maxPt.z;
+    vec1.push_back(p3);
+    ROS_INFO_STREAM(p3);
 
 	res_sam.samples = vec1;
 		// define sources
