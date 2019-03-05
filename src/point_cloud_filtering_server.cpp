@@ -404,7 +404,7 @@ class ROSController {
     std::cout << "Min x: " << minPt_ci.x << std::endl;
     std::cout << "Min y: " << minPt_ci.y << std::endl;
     std::cout << "Min z: " << minPt_ci.z << std::endl;
-    float perc_z_axis = 0.9;
+    float perc_z_axis = 0.95;
     float max_z_point = perc_z_axis * maxPt_ci.z;
     int cont_added_indexes = 0;
 
@@ -513,7 +513,7 @@ ROSController::ROSController(ros::NodeHandle n, char* pointcloud_topic, char* po
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "point_cloud_filtering_server");
-  char* pointcloud_topic = "/summit_xl/arm_camera/depth_registered/points";
+  char* pointcloud_topic = "/summit_xl/arm_camera/depth_registered/points_throttled";
   if (argc == 2)
   {
     pointcloud_topic = argv[1];
@@ -521,7 +521,7 @@ int main(int argc, char **argv)
   ROS_INFO("Will register to pointcloud2 topic: %s", pointcloud_topic);
 
 
-char* pointcloud_topic_2 = "/summit_xl/front_rgbd_camera/depth/points"; //on robot it is depth_registered
+char* pointcloud_topic_2 = "/summit_xl/front_rgbd_camera/depth/points_throttled"; //on robot it is depth_registered
   if (argc == 3)
   {
     pointcloud_topic_2 = argv[2];
