@@ -497,11 +497,12 @@ ROSController::ROSController(ros::NodeHandle n, char* pointcloud_topic, char* po
   this->n = n;
   this->service = n.advertiseService("filter_pointcloud", &ROSController::trigger_filter, this);
 //  pub = rospy.Publisher('cloud_indexed', CloudIndexed, queue_size=1, latch=True) 
-  this->pub = n.advertise<gpd::CloudIndexed>("/cloud_indexed", 10, true);
-  this->pub_sam = n.advertise<gpd::CloudSamples>("/cloud_samples", 10, true);
-  this->pub_pc = n.advertise<sensor_msgs::PointCloud2>("/cloud_indexed_pc_only", 10, true);
+    this->pub_pc = n.advertise<sensor_msgs::PointCloud2>("/cloud_indexed_pc_only", 1,false ); //latch=false for new object mesh every round
+  this->pub = n.advertise<gpd::CloudIndexed>("/cloud_indexed", 1, true);
+  this->pub_sam = n.advertise<gpd::CloudSamples>("/cloud_samples", 1, true);
 
-  this->pub_3 = n.advertise<sensor_msgs::PointCloud2>("/cloud_merged", 10, true);
+
+  this->pub_3 = n.advertise<sensor_msgs::PointCloud2>("/cloud_merged", 1, true);
   this->listener = new tf::TransformListener(ros::Duration(10));
   this->listener1 = new tf::TransformListener(ros::Duration(10));
   this->listener2 = new tf::TransformListener(ros::Duration(10));
