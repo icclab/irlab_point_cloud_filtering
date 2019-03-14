@@ -327,6 +327,7 @@ int main(int argc, char **argv)
   ros::init(argc, argv, "point_cloud_filtering_server");
   char* pointcloud_topic = "/summit_xl/arm_camera/depth_registered/points";
   //char* pointcloud_topic = "/camera/depth/color/points";
+  //char* pointcloud_topic = "/camera/depth_registered/points";
   if (argc == 2)
   {
     pointcloud_topic = argv[1];
