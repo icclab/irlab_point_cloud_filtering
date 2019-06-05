@@ -47,13 +47,14 @@ class ROSController {
     ros::Subscriber sub;
     ros::Publisher pub;
     ros::Publisher pub_pc;
+    ros::Publisher pub_table;
     ros::ServiceServer service;
     sensor_msgs::PointCloud2 raw_cloud;
     sensor_msgs::PointCloud2 raw_cloud_temp;
     char* pointcloud_topic;
     int tries;
     int messages;
-    int max_messages = 4;
+    int max_messages = 1;
 
   public:
   
@@ -218,11 +219,11 @@ class ROSController {
 
         }
 
-  //  std::stringstream ss;
+  std::stringstream ss;
 
-  //  ss << "/home/milt/catkin_ws_kinetic/src/gpd/scripts/cloud_cluster_" << j << ".pcd";
-  //  writer.write<pcl::PointXYZ> (ss.str (), *cloud_cluster, false); //*
-  //  j++;
+  ss << "/home/ros/catkin_ws/src/icclab_grasping_niryo/scripts/cloud_cluster_" << j << ".pcd";
+  writer.write<pcl::PointXYZ> (ss.str (), *cloud_cluster, false); //*
+  j++;
 
         //Merge current clusters to whole point cloud
     *clustered_cloud += *cloud_cluster;
@@ -307,6 +308,10 @@ class ROSController {
  // this->pub_pc.publish(res.cloud_sources.cloud);
   this->pub_pc.publish(*res_cloud);
   ROS_INFO("Published indexed pointCloud");
+  sensor_msgs::PointCloud2::Ptr table_cloud (new sensor_msgs::PointCloud2);
+  pcl::toROSMsg(*plane_cloud, *table_cloud);
+  this->pub_table.publish(*table_cloud);
+  ROS_INFO("Published table pointcloud");
   return true;
 }
   
@@ -316,8 +321,9 @@ ROSController::ROSController(ros::NodeHandle n, char* pointcloud_topic) {
   this->n = n;
   this->service = n.advertiseService("filter_pointcloud", &ROSController::trigger_filter, this);
 //  pub = rospy.Publisher('cloud_indexed', CloudIndexed, queue_size=1, latch=True) 
-  this->pub = n.advertise<gpd::CloudIndexed>("/cloud_indexed", 100, true);
-  this->pub_pc = n.advertise<sensor_msgs::PointCloud2>("/cloud_indexed_pc_only", 100, true);
+  this->pub = n.advertise<gpd::CloudIndexed>("/cloud_indexed", 100);
+  this->pub_pc = n.advertise<sensor_msgs::PointCloud2>("/cloud_indexed_pc_only", 100);
+  this->pub_table = n.advertise<sensor_msgs::PointCloud2>("/cloud_table", 100);
   this->pointcloud_topic = pointcloud_topic;
 }
 
