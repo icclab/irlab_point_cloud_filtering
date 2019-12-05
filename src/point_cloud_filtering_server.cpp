@@ -221,7 +221,8 @@ class ROSController {
 
   std::stringstream ss;
 
-  ss << "/home/ros/catkin_ws/src/icclab_grasping_niryo/scripts/cloud_cluster_" << j << ".pcd";
+  // ss << "/home/ros/catkin_ws/src/icclab_grasping_niryo/scripts/cloud_cluster_" << j << ".pcd";
+  ss << "/home/ros/catkin_ws/src/niryo_one_ros/niryo_one_bringup/scripts/cloud_cluster_" << j << ".pcd";
   writer.write<pcl::PointXYZ> (ss.str (), *cloud_cluster, false); //*
   j++;
 
@@ -331,17 +332,22 @@ ROSController::ROSController(ros::NodeHandle n, char* pointcloud_topic) {
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "point_cloud_filtering_server");
-  char* pointcloud_topic = "/summit_xl/arm_camera/depth_registered/points";
-  //char* pointcloud_topic = "/camera/depth/color/points";
+  //char* pointcloud_topic = "/summit_xl/arm_camera/depth_registered/points";
+  //char* pointcloud_topic = "/niryo_one_camera/image_raw";
+  char* pointcloud_topic = "/camera/depth/points";
+  //char* pointcloud_topic = "/move_group/filtered_cloud";
   //char* pointcloud_topic = "/camera/depth_registered/points";
+  
+  // to get the arg from the launch file outside
   if (argc == 2)
   {
     pointcloud_topic = argv[1];
   }
   ROS_INFO("Will register to pointcloud2 topic: %s", pointcloud_topic);
   ros::NodeHandle n;
-//  ros::ServiceServer service = n.advertiseService("filter_pointcloud", trigger_filter);
-//  ros::Subscriber sub = n.subscribe("/camera/depth_registered/points", 1000, filter_pointcloud);
+  // ros::ServiceServer service = n.advertiseService("filter_pointcloud", trigger_filter);
+  // ros::Subscriber sub = n.subscribe("/camera/depth_registered/points", 1000, filter_pointcloud);
+  // ros::Subscriber sub = n.subscribe(pointcloud_topic, 1000, filter_pointcloud);
 
 //  ros::spin();
   ROSController* c = new ROSController(n, pointcloud_topic);
