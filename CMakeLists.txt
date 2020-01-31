@@ -12,7 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_srvs
   std_msgs
-  gpd
+  gpd_ros
   message_generation
   pcl_conversions
 )
@@ -76,7 +76,7 @@ generate_messages(
   std_srvs
   std_msgs
   sensor_msgs
-  gpd  # Or other packages containing msgs
+  gpd_ros  # Or other packages containing msgs
 )
 
 ################################################
