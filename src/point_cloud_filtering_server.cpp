@@ -1,7 +1,7 @@
 #include "ros/ros.h"
 #include "std_srvs/Trigger.h"
 #include "sensor_msgs/PointCloud2.h"
-#include "gpd/CloudIndexed.h"
+#include <gpd_ros/CloudIndexed.h>
 #include <iostream>
 #include <vector>
 #include <numeric>
@@ -18,10 +18,11 @@
 #include <pcl/filters/voxel_grid.h>
 #include <pcl/filters/statistical_outlier_removal.h>
 #include <pcl/features/normal_3d.h>
+#include <pcl/pcl_config.h>
 #include <pcl/kdtree/kdtree.h>
 #include <pcl/segmentation/extract_clusters.h>
 #include <pcl_conversions/pcl_conversions.h>
-//#include <pcl/ros/conversions.h>
+// #include <pcl/conversions.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <sensor_msgs/point_cloud2_iterator.h>
 #include "typedefs.h"
@@ -41,6 +42,8 @@
 #include <pcl/io/vtk_io.h>
 #include <pcl/io/vtk_lib_io.h>
 
+
+
 class ROSController {
   protected:
     ros::NodeHandle n;
@@ -54,7 +57,7 @@ class ROSController {
     char* pointcloud_topic;
     int tries;
     int messages;
-    int max_messages = 1;
+    int max_messages;
 
   public:
   
@@ -73,6 +76,7 @@ class ROSController {
 
   void filter_pointcloud(const sensor_msgs::PointCloud2::ConstPtr& msg)
   {
+    max_messages = 1;
     ROS_INFO("Point cloud message received" );
     if (messages<max_messages)
     {
@@ -118,20 +122,20 @@ class ROSController {
     pcl::fromROSMsg(req, *filtered_cloud);
 	ROS_INFO("Loaded pointcloud with %lu points.", filtered_cloud->size());
 
-	pcl::PassThrough<PointType> pass;
+	pcl::PassThrough<pcl::PointXYZ> pass;
 	pass.setInputCloud(filtered_cloud);
 	pass.setFilterFieldName("z");
 	pass.setFilterLimits(0.0, 1.0);
 	pass.filter(*filtered_cloud);
 	ROS_INFO("Pointcloud after max range filtering has %lu points.", filtered_cloud->size());
 
-/*	pcl::VoxelGrid<PointType> sor;
+/*	pcl::VoxelGrid<pcl::PointXYZ> sor;
 	sor.setInputCloud(filtered_cloud);
 	sor.setLeafSize(0.001f, 0.001f, 0.001f);
 	sor.filter(*filtered_cloud);
 	ROS_INFO("Downsampled pointcloud has %lu points.", filtered_cloud->size());*/
 
-	pcl::StatisticalOutlierRemoval<PointType> stat_fil;
+	pcl::StatisticalOutlierRemoval<pcl::PointXYZ> stat_fil;
 	stat_fil.setInputCloud(filtered_cloud);
 	stat_fil.setMeanK(50);
 	stat_fil.setStddevMulThresh(1.0);
@@ -142,47 +146,57 @@ class ROSController {
 	pcl::ModelCoefficients::Ptr coeffs(new pcl::ModelCoefficients);
 	pcl::PointIndices::Ptr inliers(new pcl::PointIndices);
 	pcl::PointIndices::Ptr outliers(new pcl::PointIndices);
-	pcl::SACSegmentation<PointType> seg;
+	pcl::SACSegmentation<pcl::PointXYZ> seg;
 	seg.setOptimizeCoefficients(true);
 	seg.setModelType(pcl::SACMODEL_PLANE);
 	seg.setMethodType(pcl::SAC_RANSAC);
-	seg.setDistanceThreshold(0.01);
-	seg.setMaxIterations(1000);
+	seg.setDistanceThreshold(0.02);
+	seg.setMaxIterations(100);
 
-
+	ROS_ERROR( "PCL VERSION IS: %d !", PCL_VERSION); 
 	
 	int i = 0, nr_points = (int) filtered_cloud->size();
 //	while (filtered_cloud->size() > 0.3 * nr_points)
 //	{
-		seg.setInputCloud(filtered_cloud);
-		seg.segment(*inliers, *coeffs);
-		if (inliers->indices.size() == 0)
-		{
-			ROS_WARN("Could not estimate a planar model for the given dataset.");
+	ROS_WARN("Size is %d ", nr_points);
+	seg.setInputCloud(filtered_cloud);
+	ROS_INFO("Made it to line 161!!  ");
+	//ROS_INFO("Inliers: %pcl::ModelCoefficients:", *coeffs);
+	//ROS_INFO("Size of Coeffs: %d ", sizeof(*coeffs));
+	ROS_INFO("Size of Coeffs: %d ", sizeof(*coeffs));
+	ROS_INFO("Size of Inliers: %d ", sizeof(*inliers));
+	std::cout << "type of coeff " << std::endl;	
+
+	seg.segment(*inliers, *coeffs);
+	ROS_INFO("Made it to line 163!!! ");
+	if (inliers->indices.size() == 0)
+	{
+		ROS_WARN("Could not estimate a planar model for the given dataset.");
 //			break;
-		}
+	}
 
-		//Extract the planr inliers from the input cloud
-		pcl::ExtractIndices<PointType> extract;
-		extract.setInputCloud(filtered_cloud);
-		extract.setIndices(inliers);
-		extract.setNegative(false);
+	//Extract the planr inliers from the input cloud
+	pcl::ExtractIndices<pcl::PointXYZ> extract;
+	extract.setInputCloud(filtered_cloud);
+	extract.setIndices(inliers);
+	extract.setNegative(false);
 
-		//Get the points associated with the planar surface
-		extract.filter(*plane_cloud);
-		ROS_INFO("PointCloud representing the planar component: %lu data points.", plane_cloud->size());
+	ROS_INFO("Made it to line 176!!! ");
+	//Get the points associated with the planar surface
+	extract.filter(*plane_cloud);
+	ROS_INFO("PointCloud representing the planar component: %lu data points.", plane_cloud->size());
 
-		//Remove the planar inliers, extract the rest
-		extract.setNegative(true);
-		extract.filter(*filtered_cloud);
-//	}
+	//Remove the planar inliers, extract the rest
+	extract.setNegative(true);
+	extract.filter(*filtered_cloud);
+	//}
 	
 	//Creating the kdTree object for the search method of the extraction
-	pcl::search::KdTree<PointType>::Ptr tree(new pcl::search::KdTree<PointType>);
+	pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
 	tree->setInputCloud(filtered_cloud);
 
 	std::vector<pcl::PointIndices> cluster_indices;
-	pcl::EuclideanClusterExtraction<PointType> ec;
+	pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
 	ec.setClusterTolerance(0.02);
 	ec.setMinClusterSize(20);
 	ec.setMaxClusterSize(20000);
@@ -205,7 +219,8 @@ class ROSController {
     pcl::PCDWriter writer;
     //Save the clusters (object clouds) into pcd files
     for(it = cluster_indices.begin(); it != cluster_indices.end(); ++it) {
-        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster (new pcl::PointCloud<pcl::PointXYZ>);
+        // pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster (new pcl::PointCloud<pcl::PointXYZ>);
+        pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_cluster (new pcl::PointCloud<pcl::PointXYZ> ());
 
         for(pit = it->indices.begin(); pit != it->indices.end(); pit++) {
         //push_back: add a point to the end of the existing vector
@@ -289,7 +304,7 @@ class ROSController {
 		*out_z = p.z; ++out_z;
 	}*/
 
-  gpd::CloudIndexed res;
+  gpd_ros::CloudIndexed res;
 	res.cloud_sources.cloud = *res_cloud;
 	std_msgs::Int64 val;
 	val.data = 0;
@@ -321,7 +336,7 @@ ROSController::ROSController(ros::NodeHandle n, char* pointcloud_topic) {
   this->n = n;
   this->service = n.advertiseService("filter_pointcloud", &ROSController::trigger_filter, this);
 //  pub = rospy.Publisher('cloud_indexed', CloudIndexed, queue_size=1, latch=True) 
-  this->pub = n.advertise<gpd::CloudIndexed>("/cloud_indexed", 100);
+  this->pub = n.advertise<gpd_ros::CloudIndexed>("/cloud_indexed", 100);
   this->pub_pc = n.advertise<sensor_msgs::PointCloud2>("/cloud_indexed_pc_only", 100);
   this->pub_table = n.advertise<sensor_msgs::PointCloud2>("/cloud_table", 100);
   this->pointcloud_topic = pointcloud_topic;
@@ -331,8 +346,8 @@ ROSController::ROSController(ros::NodeHandle n, char* pointcloud_topic) {
 int main(int argc, char **argv)
 {
   ros::init(argc, argv, "point_cloud_filtering_server");
-  char* pointcloud_topic = "/summit_xl/arm_camera/depth_registered/points";
-  //char* pointcloud_topic = "/camera/depth/color/points";
+  //char* pointcloud_topic = "/summit_xl/arm_camera/depth_registered/points";
+  char* pointcloud_topic = "/camera/depth/points";
   //char* pointcloud_topic = "/camera/depth_registered/points";
   if (argc == 2)
   {
