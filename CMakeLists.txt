@@ -142,6 +142,9 @@ include_directories(
 # add_executable(${PROJECT_NAME}_node src/irlab_point_cloud_filtering_node.cpp)
 add_executable(point_cloud_filtering_server src/point_cloud_filtering_server.cpp)
 target_link_libraries(point_cloud_filtering_server ${catkin_LIBRARIES})
+add_executable(point_cloud_clustering_server src/point_cloud_clustering_server.cpp)
+target_link_libraries(point_cloud_clustering_server ${catkin_LIBRARIES})
+
 ##add_dependencies(point_cloud_filtering_server irlab_point_cloud_filtering_gencpp)
 
 ## Rename C++ executable without prefix
