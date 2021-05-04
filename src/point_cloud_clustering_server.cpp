@@ -164,6 +164,9 @@ class ROSController {
   this->pub_pc.publish(*res_cloud);
   ROS_INFO("Published indexed pointCloud");
 
+  ROS_INFO("Unsubscribing from topic");
+  this->sub.shutdown();
+
 }
   
 };
