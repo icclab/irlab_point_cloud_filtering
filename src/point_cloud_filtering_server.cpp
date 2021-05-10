@@ -129,11 +129,11 @@ class ROSController {
 	pass.filter(*filtered_cloud);
 	ROS_INFO("Pointcloud after max range filtering has %lu points.", filtered_cloud->size());
 
-/*	pcl::VoxelGrid<pcl::PointXYZ> sor;
+	pcl::VoxelGrid<pcl::PointXYZ> sor;
 	sor.setInputCloud(filtered_cloud);
-	sor.setLeafSize(0.001f, 0.001f, 0.001f);
+	sor.setLeafSize(0.01f, 0.01f, 0.01f);
 	sor.filter(*filtered_cloud);
-	ROS_INFO("Downsampled pointcloud has %lu points.", filtered_cloud->size());*/
+	ROS_INFO("Downsampled pointcloud has %lu points.", filtered_cloud->size());
 
 	pcl::StatisticalOutlierRemoval<pcl::PointXYZ> stat_fil;
 	stat_fil.setInputCloud(filtered_cloud);
@@ -160,7 +160,6 @@ class ROSController {
 //	{
 	ROS_WARN("Size is %d ", nr_points);
 	seg.setInputCloud(filtered_cloud);
-	ROS_INFO("Made it to line 161!!  ");
 	//ROS_INFO("Inliers: %pcl::ModelCoefficients:", *coeffs);
 	//ROS_INFO("Size of Coeffs: %d ", sizeof(*coeffs));
 	ROS_INFO("Size of Coeffs: %d ", sizeof(*coeffs));
@@ -168,7 +167,6 @@ class ROSController {
 	std::cout << "type of coeff " << std::endl;	
 
 	seg.segment(*inliers, *coeffs);
-	ROS_INFO("Made it to line 163!!! ");
 	if (inliers->indices.size() == 0)
 	{
 		ROS_WARN("Could not estimate a planar model for the given dataset.");
@@ -181,7 +179,6 @@ class ROSController {
 	extract.setIndices(inliers);
 	extract.setNegative(false);
 
-	ROS_INFO("Made it to line 176!!! ");
 	//Get the points associated with the planar surface
 	extract.filter(*plane_cloud);
 	ROS_INFO("PointCloud representing the planar component: %lu data points.", plane_cloud->size());
