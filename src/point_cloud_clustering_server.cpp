@@ -125,7 +125,7 @@ class ROSController {
 
   std::stringstream ss;
 
-  ss << "/home/ros/catkin_ws/src/cloud_cluster_" << j << ".pcd";
+  ss << "/tmp/cloud_cluster_" << j << ".pcd";
   writer.write<pcl::PointXYZ> (ss.str (), *cloud_cluster, false); //*
   j++;
 
