@@ -131,7 +131,7 @@ class ROSController {
 
 	pcl::VoxelGrid<pcl::PointXYZ> sor;
 	sor.setInputCloud(filtered_cloud);
-	sor.setLeafSize(0.01f, 0.01f, 0.01f);
+	sor.setLeafSize(0.001f, 0.001f, 0.001f);
 	sor.filter(*filtered_cloud);
 	ROS_INFO("Downsampled pointcloud has %lu points.", filtered_cloud->size());
 
@@ -162,8 +162,8 @@ class ROSController {
 	seg.setInputCloud(filtered_cloud);
 	//ROS_INFO("Inliers: %pcl::ModelCoefficients:", *coeffs);
 	//ROS_INFO("Size of Coeffs: %d ", sizeof(*coeffs));
-	ROS_INFO("Size of Coeffs: %d ", sizeof(*coeffs));
-	ROS_INFO("Size of Inliers: %d ", sizeof(*inliers));
+	ROS_INFO("Size of Coeffs: %ld ", sizeof(*coeffs));
+	ROS_INFO("Size of Inliers: %ld ", sizeof(*inliers));
 	std::cout << "type of coeff " << std::endl;	
 
 	seg.segment(*inliers, *coeffs);
@@ -233,7 +233,7 @@ class ROSController {
 
   std::stringstream ss;
 
-  ss << "/home/ros/catkin_ws/src/icclab_grasping_niryo/scripts/cloud_cluster_" << j << ".pcd";
+  ss << "/tmp/cloud_cluster_" << j << ".pcd";
   writer.write<pcl::PointXYZ> (ss.str (), *cloud_cluster, false); //*
   j++;
 
