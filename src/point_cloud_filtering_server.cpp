@@ -333,9 +333,9 @@ ROSController::ROSController(ros::NodeHandle n, char* pointcloud_topic) {
   this->n = n;
   this->service = n.advertiseService("filter_pointcloud", &ROSController::trigger_filter, this);
 //  pub = rospy.Publisher('cloud_indexed', CloudIndexed, queue_size=1, latch=True) 
-  this->pub = n.advertise<gpd_ros::CloudIndexed>("/cloud_indexed", 100);
-  this->pub_pc = n.advertise<sensor_msgs::PointCloud2>("/cloud_indexed_pc_only", 100);
-  this->pub_table = n.advertise<sensor_msgs::PointCloud2>("/cloud_table", 100);
+  this->pub = n.advertise<gpd_ros::CloudIndexed>("/cloud_indexed", 1, true);
+  this->pub_pc = n.advertise<sensor_msgs::PointCloud2>("/cloud_indexed_pc_only", 1, true);
+  this->pub_table = n.advertise<sensor_msgs::PointCloud2>("/cloud_table", 1, true);
   this->pointcloud_topic = pointcloud_topic;
 }
 
